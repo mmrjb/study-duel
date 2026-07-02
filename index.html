@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Duel</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <main class="app">
+    <header class="hero">
+      <div>
+        <span class="badge">Private Weekly Challenge</span>
+        <h1>Study Duel</h1>
+        <p>
+          A simple competition for IELTS, DevOps, migration, gym, diet, and discipline.
+        </p>
+      </div>
+
+      <div class="hero-card">
+        <p class="small-title">Current Goal</p>
+        <h3>Build our future together</h3>
+        <p>Track every night. Compete every week. Reward the winner.</p>
+      </div>
+    </header>
+
+    <section class="dashboard-grid">
+      <div class="profile-card">
+        <div class="avatar">M</div>
+        <h2>Mohammadmahdi</h2>
+        <p id="score-me">0 points</p>
+      </div>
+
+      <div class="profile-card">
+        <div class="avatar">B</div>
+        <h2>Bahar</h2>
+        <p id="score-bahar">0 points</p>
+      </div>
+
+      <div class="winner-card">
+        <p class="small-title">This Week</p>
+        <h2 id="winner-text">No activity has been added yet.</h2>
+        <p id="difference-text">Difference: 0 points</p>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <div class="card">
+        <h2>Add Daily Activity</h2>
+        <p class="hint">Use this every night around 11 PM and add what you did today.</p>
+
+        <label>Person</label>
+        <select id="person">
+          <option value="Mohammadmahdi">Mohammadmahdi</option>
+          <option value="Bahar">Bahar</option>
+        </select>
+
+        <label>Category</label>
+        <select id="category"></select>
+
+        <div class="inline-form">
+          <input id="new-category" type="text" placeholder="Add custom category..." />
+          <button type="button" onclick="addCategory()">Add</button>
+        </div>
+
+        <label>Task Title</label>
+        <input id="task" type="text" placeholder="e.g. Docker Lab, IELTS Reading, Gym Workout" />
+
+        <label>Score</label>
+        <input id="score" type="number" placeholder="e.g. 40" />
+
+        <div class="quick-scores">
+          <button type="button" onclick="setScore(10)">+10 Easy</button>
+          <button type="button" onclick="setScore(25)">+25 Medium</button>
+          <button type="button" onclick="setScore(50)">+50 Hard</button>
+          <button type="button" onclick="setScore(100)">+100 Epic</button>
+        </div>
+
+        <button class="main-btn" onclick="addActivity()">Add Activity</button>
+      </div>
+
+      <div class="card">
+        <h2>Score Guide</h2>
+        <div class="guide-list">
+          <div>
+            <span>10</span>
+            <p>Small task, light review, short walk</p>
+          </div>
+          <div>
+            <span>25</span>
+            <p>Normal study session, diet discipline, useful practice</p>
+          </div>
+          <div>
+            <span>50</span>
+            <p>Hard lab, writing task, serious gym workout</p>
+          </div>
+          <div>
+            <span>100</span>
+            <p>Mock exam, project milestone, big weekly challenge</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <div class="card">
+        <h2>Activity History</h2>
+        <div id="activity-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Category Summary</h2>
+        <p class="hint">Check if your week is balanced between IELTS, DevOps, health, and migration.</p>
+        <div id="category-summary"></div>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <div class="card">
+        <h2>Rewards</h2>
+        <p class="hint">The weekly winner can choose a reward or pick one randomly.</p>
+
+        <div class="inline-form">
+          <input id="reward-input" type="text" placeholder="e.g. Cafe, Dinner, Movie, Book..." />
+          <button type="button" onclick="addReward()">Add</button>
+        </div>
+
+        <div id="reward-list"></div>
+
+        <button class="main-btn green" onclick="pickRandomReward()">Pick Random Reward</button>
+        <p id="selected-reward"></p>
+      </div>
+
+      <div class="card danger-zone">
+        <h2>End of Week</h2>
+        <p class="hint">
+          Use this after choosing the weekly winner and reward. Rewards and categories will stay saved.
+        </p>
+
+        <div class="weekly-final">
+          <h3 id="final-winner">Winner: -</h3>
+          <p id="final-score">No result yet.</p>
+        </div>
+
+        <button class="danger" onclick="resetWeek()">Start New Week</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
