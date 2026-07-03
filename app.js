@@ -1,67 +1,15 @@
 const SUPABASE_URL = "https://wgdobsjrmcxsehvhwyer.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qErSzylqcBJbAv2-pf9diQ_8_PtLVuO";
-const STORAGE_KEYS = {
-  activities: "studyDuel.activities",
-  rewards: "studyDuel.rewards",
-  categories: "studyDuel.categories",
-  selectedReward: "studyDuel.selectedReward"
-};
 
-const USERS = ["Mohammadmahdi", "Bahar"];
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const DEFAULT_CATEGORIES = [
-  "IELTS",
-  "DevOps",
-  "Linux",
-  "Docker",
-  "Kubernetes",
-  "Migration",
-  "Gym",
-  "Diet",
-  "Other"
-];
-
-const DEFAULT_REWARDS = [
-  "Cafe",
-  "Dinner",
-  "Movie night",
-  "Ice cream",
-  "Book shopping",
-  "Winner chooses the Friday plan",
-  "A full rest evening",
-  "Pizza night",
-  "Walking date",
-  "Small gift"
-];
-
-let activities = loadFromStorage(STORAGE_KEYS.activities, []);
-let rewards = loadFromStorage(STORAGE_KEYS.rewards, DEFAULT_REWARDS);
-let categories = loadFromStorage(STORAGE_KEYS.categories, DEFAULT_CATEGORIES);
-let selectedReward = loadFromStorage(STORAGE_KEYS.selectedReward, "");
-
-function loadFromStorage(key, fallback) {
-  const data = localStorage.getItem(key);
-
-  if (!data) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(data);
-  } catch {
-    return fallback;
-  }
-}
-
-function saveData() {
-  localStorage.setItem(STORAGE_KEYS.activities, JSON.stringify(activities));
-  localStorage.setItem(STORAGE_KEYS.rewards, JSON.stringify(rewards));
-  localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(categories));
-  localStorage.setItem(STORAGE_KEYS.selectedReward, JSON.stringify(selectedReward));
-}
+let activities = [];
+let rewards = [];
+let categories = [];
+let selectedReward = "";
 
 function escapeHTML(value) {
-  return String(value)
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -70,6 +18,8 @@ function escapeHTML(value) {
 }
 
 function formatDate(dateString) {
+  if (!dateString) return "-";
+
   const date = new Date(dateString);
 
   return date.toLocaleString("en-GB", {
@@ -79,6 +29,80 @@ function formatDate(dateString) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function showError(message, error) {
+  console.error(message, error);
+  alert(message + "\n\nCheck Console for details.");
+}
+
+async function loadData() {
+  await Promise.all([
+    loadActivities(),
+    loadRewards(),
+    loadCategories(),
+    loadAppState()
+  ]);
+
+  renderAll();
+}
+
+async function loadActivities() {
+  const { data, error } = await db
+    .from("activities")
+    .select("id, person, category, task, score, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    showError("Failed to load activities from Supabase.", error);
+    return;
+  }
+
+  activities = data || [];
+}
+
+async function loadRewards() {
+  const { data, error } = await db
+    .from("rewards")
+    .select("id, title, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    showError("Failed to load rewards from Supabase.", error);
+    return;
+  }
+
+  rewards = data || [];
+}
+
+async function loadCategories() {
+  const { data, error } = await db
+    .from("categories")
+    .select("id, name, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    showError("Failed to load categories from Supabase.", error);
+    return;
+  }
+
+  categories = data || [];
+}
+
+async function loadAppState() {
+  const { data, error } = await db
+    .from("app_state")
+    .select("id, selected_reward, updated_at")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load app_state:", error);
+    selectedReward = "";
+    return;
+  }
+
+  selectedReward = data?.selected_reward || "";
 }
 
 function calculateScores() {
@@ -130,12 +154,15 @@ function getWinner(scores) {
 
 function renderCategories() {
   const categorySelect = document.getElementById("category");
+
+  if (!categorySelect) return;
+
   categorySelect.innerHTML = "";
 
   categories.forEach((category) => {
     const option = document.createElement("option");
-    option.value = category;
-    option.textContent = category;
+    option.value = category.name;
+    option.textContent = category.name;
     categorySelect.appendChild(option);
   });
 }
@@ -167,6 +194,8 @@ function renderDashboard() {
 function renderActivities() {
   const list = document.getElementById("activity-list");
 
+  if (!list) return;
+
   if (activities.length === 0) {
     list.innerHTML = `<div class="empty">No activity has been added this week.</div>`;
     return;
@@ -180,7 +209,7 @@ function renderActivities() {
             <div>
               <h3>${escapeHTML(activity.task)}</h3>
               <p class="meta">
-                ${escapeHTML(activity.person)} • ${escapeHTML(activity.category)} • ${formatDate(activity.date)}
+                ${escapeHTML(activity.person)} • ${escapeHTML(activity.category)} • ${formatDate(activity.created_at)}
               </p>
             </div>
             <span class="score-pill">+${Number(activity.score)} pts</span>
@@ -197,17 +226,19 @@ function renderRewards() {
   const rewardList = document.getElementById("reward-list");
   const selectedRewardText = document.getElementById("selected-reward");
 
+  if (!rewardList || !selectedRewardText) return;
+
   if (rewards.length === 0) {
     rewardList.innerHTML = `<div class="empty">No rewards yet. Add your first reward.</div>`;
   } else {
     rewardList.innerHTML = rewards
-      .map((reward, index) => {
+      .map((reward) => {
         return `
           <div class="reward">
-            <span>${escapeHTML(reward)}</span>
+            <span>${escapeHTML(reward.title)}</span>
             <div class="reward-actions">
-              <button onclick="selectReward('${escapeHTML(reward)}')">Choose</button>
-              <button class="delete-btn" onclick="deleteReward(${index})">Delete</button>
+              <button onclick="selectRewardById('${reward.id}')">Choose</button>
+              <button class="delete-btn" onclick="deleteReward('${reward.id}')">Delete</button>
             </div>
           </div>
         `;
@@ -225,6 +256,8 @@ function renderRewards() {
 function renderCategorySummary() {
   const summary = {};
   const container = document.getElementById("category-summary");
+
+  if (!container) return;
 
   activities.forEach((activity) => {
     if (!summary[activity.category]) {
@@ -265,7 +298,7 @@ function setScore(value) {
   document.getElementById("score").value = value;
 }
 
-function addActivity() {
+async function addActivity() {
   const person = document.getElementById("person").value;
   const category = document.getElementById("category").value;
   const task = document.getElementById("task").value.trim();
@@ -276,38 +309,50 @@ function addActivity() {
     return;
   }
 
-  const activity = {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    person,
-    category,
-    task,
-    score,
-    date: new Date().toISOString()
-  };
+  const { data, error } = await db
+    .from("activities")
+    .insert([
+      {
+        person,
+        category,
+        task,
+        score
+      }
+    ])
+    .select();
 
-  activities.unshift(activity);
+  if (error) {
+    showError("Failed to add activity.", error);
+    return;
+  }
+
+  console.log("Activity inserted:", data);
 
   document.getElementById("task").value = "";
   document.getElementById("score").value = "";
 
-  saveData();
-  renderAll();
+  await loadData();
 }
 
-function deleteActivity(id) {
+async function deleteActivity(id) {
   const confirmed = confirm("Delete this activity?");
 
-  if (!confirmed) {
+  if (!confirmed) return;
+
+  const { error } = await db
+    .from("activities")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    showError("Failed to delete activity.", error);
     return;
   }
 
-  activities = activities.filter((activity) => activity.id !== id);
-
-  saveData();
-  renderAll();
+  await loadData();
 }
 
-function addCategory() {
+async function addCategory() {
   const input = document.getElementById("new-category");
   const value = input.value.trim();
 
@@ -317,7 +362,7 @@ function addCategory() {
   }
 
   const exists = categories.some(
-    (category) => category.toLowerCase() === value.toLowerCase()
+    (category) => category.name.toLowerCase() === value.toLowerCase()
   );
 
   if (exists) {
@@ -325,14 +370,20 @@ function addCategory() {
     return;
   }
 
-  categories.push(value);
-  input.value = "";
+  const { error } = await db
+    .from("categories")
+    .insert([{ name: value }]);
 
-  saveData();
-  renderAll();
+  if (error) {
+    showError("Failed to add category.", error);
+    return;
+  }
+
+  input.value = "";
+  await loadData();
 }
 
-function addReward() {
+async function addReward() {
   const input = document.getElementById("reward-input");
   const value = input.value.trim();
 
@@ -341,47 +392,80 @@ function addReward() {
     return;
   }
 
-  rewards.push(value);
-  input.value = "";
+  const { error } = await db
+    .from("rewards")
+    .insert([{ title: value }]);
 
-  saveData();
-  renderAll();
-}
-
-function deleteReward(index) {
-  const confirmed = confirm("Delete this reward?");
-
-  if (!confirmed) {
+  if (error) {
+    showError("Failed to add reward.", error);
     return;
   }
 
-  rewards.splice(index, 1);
-
-  saveData();
-  renderAll();
+  input.value = "";
+  await loadData();
 }
 
-function selectReward(reward) {
-  selectedReward = reward;
+async function deleteReward(id) {
+  const confirmed = confirm("Delete this reward?");
 
-  saveData();
-  renderAll();
+  if (!confirmed) return;
+
+  const { error } = await db
+    .from("rewards")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    showError("Failed to delete reward.", error);
+    return;
+  }
+
+  await loadData();
 }
 
-function pickRandomReward() {
+async function selectRewardById(id) {
+  const reward = rewards.find((item) => item.id === id);
+
+  if (!reward) {
+    alert("Reward not found.");
+    return;
+  }
+
+  await selectReward(reward.title);
+}
+
+async function selectReward(rewardTitle) {
+  selectedReward = rewardTitle;
+
+  const { error } = await db
+    .from("app_state")
+    .update({
+      selected_reward: selectedReward,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", 1);
+
+  if (error) {
+    showError("Failed to select reward.", error);
+    return;
+  }
+
+  await loadData();
+}
+
+async function pickRandomReward() {
   if (rewards.length === 0) {
     alert("No rewards available. Please add at least one reward.");
     return;
   }
 
   const randomIndex = Math.floor(Math.random() * rewards.length);
-  selectedReward = rewards[randomIndex];
+  const rewardTitle = rewards[randomIndex].title;
 
-  saveData();
-  renderAll();
+  await selectReward(rewardTitle);
 }
 
-function resetWeek() {
+async function resetWeek() {
   const scores = calculateScores();
   const result = getWinner(scores);
 
@@ -393,15 +477,76 @@ function resetWeek() {
 
   const confirmed = confirm(message);
 
-  if (!confirmed) {
+  if (!confirmed) return;
+
+  const { error: deleteError } = await db
+    .from("activities")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (deleteError) {
+    showError("Failed to reset activities.", deleteError);
     return;
   }
 
-  activities = [];
-  selectedReward = "";
+  const { error: stateError } = await db
+    .from("app_state")
+    .update({
+      selected_reward: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", 1);
 
-  saveData();
-  renderAll();
+  if (stateError) {
+    showError("Activities were reset, but selected reward could not be cleared.", stateError);
+    return;
+  }
+
+  await loadData();
 }
 
-renderAll();
+function setupRealtime() {
+  db.channel("study-duel-changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "activities" },
+      async () => {
+        await loadData();
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "rewards" },
+      async () => {
+        await loadData();
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "categories" },
+      async () => {
+        await loadData();
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "app_state" },
+      async () => {
+        await loadData();
+      }
+    )
+    .subscribe();
+}
+
+window.setScore = setScore;
+window.addActivity = addActivity;
+window.deleteActivity = deleteActivity;
+window.addCategory = addCategory;
+window.addReward = addReward;
+window.deleteReward = deleteReward;
+window.selectRewardById = selectRewardById;
+window.pickRandomReward = pickRandomReward;
+window.resetWeek = resetWeek;
+
+loadData();
+setupRealtime();
