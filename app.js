@@ -1,6 +1,5 @@
 const SUPABASE_URL = "https://wgdobsjrmcxsehvhwyer.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qErSzylqcBJbAv2-pf9diQ_8_PtLVuO";
-
 const STORAGE_KEYS = {
   activities: "studyDuel.activities",
   rewards: "studyDuel.rewards",
