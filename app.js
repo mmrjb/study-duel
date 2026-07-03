@@ -1,7 +1,7 @@
 const SUPABASE_URL = "https://wgdobsjrmcxsehvhwyer.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_qErSzylqcBJbAv2-pf9diQ_8_PtLVuO";
+const SUPABASE_KEY = "sb_publishable_qErSzylqcBJbAv2-pf9diQ_8_PtLVuO";
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let activities = [];
 let rewards = [];
@@ -33,7 +33,7 @@ function formatDate(dateString) {
 
 function showError(message, error) {
   console.error(message, error);
-  alert(message + "\n\nCheck Console for details.");
+  alert(message + "\n\nOpen Console for details.");
 }
 
 async function loadData() {
@@ -506,7 +506,7 @@ async function resetWeek() {
 }
 
 function setupRealtime() {
-  db.channel("study-duel-changes")
+  db.channel("study-duel-realtime")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "activities" },
@@ -535,7 +535,9 @@ function setupRealtime() {
         await loadData();
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log("Realtime status:", status);
+    });
 }
 
 window.setScore = setScore;
